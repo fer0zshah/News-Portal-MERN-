@@ -1,5 +1,7 @@
-import React, { useEffect, useState ,useContext} from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useEffect, useState, useContext } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
@@ -10,45 +12,95 @@ import NormalBlock from '../components/NormalBlock';
 
 import storeContext from '../../context/storeContext';
 
-// ==========================================
-// HELPER FUNCTION: Time Ago Calculator
-// You can later move this to a 'utils' folder!
-// ==========================================
-const timeAgo = (dateString) => {
-  const newsDate = new Date(dateString);
-  const now = new Date();
-  const secondsPast = (now.getTime() - newsDate.getTime()) / 1000;
-
-  if (secondsPast < 60) return 'Just now';
-  if (secondsPast < 3600) return `${Math.floor(secondsPast / 60)} minutes ago`;
-  if (secondsPast <= 86400) return `${Math.floor(secondsPast / 3600)} hours ago`;
-  if (secondsPast <= 2592000) return `${Math.floor(secondsPast / 86400)} days ago`;
-  if (secondsPast <= 31536000) return `${Math.floor(secondsPast / 2592000)} months ago`;
-  return `${Math.floor(secondsPast / 31536000)} years ago`;
-};
-
 const CategoryNews = () => {
-  // 1. Grab the dynamic category from the URL
-  const { category } = useParams(); 
+  const navigate = useNavigate();
+  const { category } = useParams();
+
   const { store } = useContext(storeContext);
   const isAdminUser = store.userInfo?.role === 'admin';
-  // 2. Setup state
+
+  // State setup
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // NEW: State to track how many cards to show
-  const [visibleCount, setVisibleCount] = useState(8); 
+  const [visibleCount, setVisibleCount] = useState(8);
 
-  // 3. Re-fetch data whenever the category changes
+  // ==========================================
+  // 1. FETCH REAL DATA FROM BACKEND
+  // ==========================================
+  const fetchCategoryNews = async () => {
+    try {
+      const response = await axios.get(`http://localhost:5000/api/category/news/${category}`);
+      setNews(response.data.news);
+    } catch (error) {
+      console.error("Failed to fetch news:", error);
+    }
+  };
+
+  // ==========================================
+  // 2. ADMIN ACTION: MAKE HOT
+  // ==========================================
+  // Update this inside CategoryNews.jsx
+  const handleMakeHot = async (newsId) => {
+    try {
+      const token = localStorage.getItem('newsToken');
+      const response = await axios.put(`http://localhost:5000/api/news/make-hot/${newsId}`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      alert(response.data.message);
+
+      // ✨ THE MAGIC LINE: Re-fetch the data so the UI updates instantly!
+      fetchCategoryNews();
+
+    } catch (error) {
+      console.error("Error making hot:", error);
+      alert("Oops! Could not make the article hot.");
+    }
+  };
+
+  // ==========================================
+  // 3. ADMIN ACTION: DELETE
+  // ==========================================
+  const handleDelete = async (newsId) => {
+    if (window.confirm("Are you sure you want to completely delete this article? This cannot be undone!")) {
+      try {
+        const token = localStorage.getItem('newsToken');
+        const response = await axios.delete(`http://localhost:5000/api/news/delete/${newsId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        alert(response.data.message);
+
+        // Remove the deleted article from the screen instantly!
+        setNews((prevNews) => prevNews.filter(article => article._id !== newsId));
+      } catch (error) {
+        console.error("Error deleting news:", error);
+        alert("Oops! Could not delete the article.");
+      }
+    }
+  };
+
+  // ==========================================
+  // EFFECT HOOKS
+  // ==========================================
   useEffect(() => {
     setLoading(true);
-    // Reset visible count back to 8 when swapping categories
-    setVisibleCount(8); 
+    setVisibleCount(8); // Reset visible count on category change
+
+    // Fetch real data!
+    fetchCategoryNews();
+
+    // Simulate a tiny loading delay for smooth UX
     setTimeout(() => setLoading(false), 500);
-    
-    window.scrollTo(0, 0); 
+    window.scrollTo(0, 0);
   }, [category]);
 
+
+  // ==========================================
+  // UI RENDER
+  // ==========================================
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -60,7 +112,7 @@ const CategoryNews = () => {
       </div>
     );
   }
-
+  const hotNewsArticle = news.find(article => article.isHot === true);
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <Header />
@@ -74,59 +126,59 @@ const CategoryNews = () => {
       </div>
 
       <main className="max-w-7xl mx-auto px-4 py-8 flex-grow w-full">
-        
-        {/* =========================================
-            TOP ROW: CATEGORY HOT NEWS & LATEST 4
-            ========================================= */}
+
+        {/* TOP ROW: CATEGORY HOT NEWS & LATEST */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-          <HotBlock blockTitle={`Hot in ${category}`} />
+          {/* Update your HotBlock to look like this: */}
+          <HotBlock
+            blockTitle={`Hot in ${category}`}
+            hotNews={hotNewsArticle} // <-- We are passing the real data down!
+          />
           <LatestBlock blockTitle={`Latest in ${category}`} />
         </div>
 
-        {/* =========================================
-            BOTTOM ROW: OLDER NEWS GRID
-            ========================================= */}
+        {/* BOTTOM ROW: REAL NEWS GRID */}
         <div className="mt-12">
           <div className="flex justify-between items-center border-b-2 border-slate-200 mb-6 pb-2">
-            <h2 className="text-xl font-extrabold text-slate-800 border-l-4 border-red-600 pl-3">More {category} Updates</h2>
+            <h2 className="text-xl font-extrabold text-slate-800 border-l-4 border-red-600 pl-3">
+              More {category} Updates
+            </h2>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* We create an array of 24 fake items, but ONLY show 'visibleCount' amount.
-            */}
-            {Array.from({ length: 24 }).slice(0, visibleCount).map((_, index) => {
-              
-              // FAKE DATABASE DATE: We subtract a few hours based on the index to test our timeAgo function!
-              // (e.g., index 1 is 2 hours ago, index 10 is 20 hours ago)
-              const dummyDbDate = new Date(Date.now() - index * 2 * 60 * 60 * 1000).toISOString();
+            {news.length > 0 ? (
+              // Map through the REAL news array, up to the visibleCount limit
+              news.slice(0, visibleCount).map((article) => (
+                <NormalBlock
+                  key={article._id}
+                  image={article.image}
+                  title={article.title}
+                  badge={article.category}
+                  timestamp={article.date}
+                  isAdmin={isAdminUser}
 
-              return (
-                <NormalBlock 
-                  key={index}
-                  image={`https://images.unsplash.com/photo-1495020689067-958852a7765e?q=80&w=400&auto=format&fit=crop&sig=${index}`}
-                  title="This will be an older news article fetched from the database..."
-                  badge={category}
-                  timestamp={timeAgo(dummyDbDate)} // Passing the calculated time!
-                  isAdmin={true} 
-  onMakeHot={() => alert(`Making article ${index} the new HOT news! 🔥`)}
-  onEdit={() => alert(`Editing article ${index} 📝`)}
-  onDelete={() => alert(`Deleting article ${index} 🗑️`)}
+                  // Connect the real database ID to your functions
+                  onMakeHot={() => handleMakeHot(article._id)}
+                  onEdit={() => navigate(`/dashboard/news/edit/${article._id}`)}
+                  onDelete={() => handleDelete(article._id)}
                 />
-              )
-            })}
+              ))
+            ) : (
+              <p className="col-span-full text-center text-slate-500 font-medium py-8">
+                No news found in this category yet!
+              </p>
+            )}
           </div>
 
-          {/* =========================================
-              LOAD MORE BUTTON
-              ========================================= */}
-          {/* Only show the button if there are still more fake items to load */}
-          {visibleCount < 24 && (
+          {/* LOAD MORE BUTTON */}
+          {/* Only show if we have more real news hiding than is currently visible */}
+          {visibleCount < news.length && (
             <div className="flex justify-center mt-10 mb-8">
-              <button 
+              <button
                 onClick={() => setVisibleCount(prev => prev + 4)}
                 className="bg-white border-2 border-slate-300 text-slate-700 font-bold py-2 px-8 rounded-full hover:bg-slate-50 hover:border-slate-400 hover:text-red-600 transition-colors shadow-sm"
               >
-                Load More News 
+                Load More News
               </button>
             </div>
           )}

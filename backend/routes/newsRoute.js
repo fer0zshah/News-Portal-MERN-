@@ -5,6 +5,9 @@ const middleware = require('../middlewares/middleware')
 router.post('/api/news/add', middleware.auth, newsController.add_news)
 router.put('/api/news/update/:news_id', middleware.auth, newsController.update_news)
 router.put('/api/news/status-update/:news_id', middleware.auth, newsController.update_news_update)
+// Add these with your other middleware.auth routes!
+router.put('/api/news/make-hot/:news_id', middleware.auth, newsController.make_hot_news);
+router.delete('/api/news/delete/:news_id', middleware.auth, newsController.delete_news);
 
 router.get('/api/images', middleware.auth, newsController.get_images)
 router.post('/api/images/add', middleware.auth, newsController.add_images)

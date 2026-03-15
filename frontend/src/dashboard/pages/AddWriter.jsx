@@ -100,13 +100,14 @@ const AddWriter = () => {
               >
                 <option value="">--- Select Category ---</option>
                <option value="National">National</option>
-                <option value="Political">Politics</option>
+                <option value="Politics">Politics</option>
                 <option value="International">International</option>
                 <option value="Technology">Technology</option>
                 <option value="Sports">Sports</option>
                 <option value="Culture">Culture</option>
                 <option value="Economy">Economy</option>
                 <option value="Education">Education</option>
+                <option value="Opinion">Opinion</option>
               </select>
             </div>
           </div>

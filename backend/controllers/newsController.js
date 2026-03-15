@@ -90,6 +90,73 @@ class newsController {
         }
     }
 
+make_hot_news = async (req, res) => {
+    // 1. Grab the user's role from your auth middleware
+    const { role } = req.userInfo;
+    const { news_id } = req.params;
+
+    // 2. THE SECURITY CHECK (Blocks hackers!)
+    if (role !== 'admin') {
+        return res.status(401).json({ message: 'Unauthorized! Only admins can make news hot.' });
+    }
+
+    try {
+        // 3. Find the specific article the admin just clicked
+        const targetNews = await newsModel.findById(news_id);
+        
+        if (!targetNews) {
+            return res.status(404).json({ message: 'News article not found' });
+        }
+
+        // 4. Toggle & Replace Logic
+        if (targetNews.isHot) {
+            // If it is ALREADY hot, turn it off so the big block goes empty
+            targetNews.isHot = false;
+            await targetNews.save();
+            return res.status(200).json({ message: 'Article removed from Hot spot.', news: targetNews });
+        } else {
+            // If it is NOT hot, first remove the 'hot' status from ALL other articles in this specific category
+            await newsModel.updateMany(
+                { category: targetNews.category },
+                { $set: { isHot: false } }
+            );
+
+            // Then, make this specific article the new Hot one
+            targetNews.isHot = true;
+            await targetNews.save();
+            return res.status(200).json({ message: 'News marked as HOT! 🔥', news: targetNews });
+        }
+
+    } catch (error) {
+        console.error("Error making news hot:", error.message);
+        return res.status(500).json({ message: 'Internal server error' });
+    }
+}
+
+
+delete_news = async (req, res) => {
+        const { role } = req.userInfo;
+        const { news_id } = req.params;
+
+        // SECURITY CHECK: Only Admins can delete from the public page!
+        if (role !== 'admin') {
+            return res.status(401).json({ message: 'Unauthorized! Only admins can delete news.' });
+        }
+
+        try {
+            const deletedNews = await newsModel.findByIdAndDelete(news_id);
+            
+            if (!deletedNews) {
+                return res.status(404).json({ message: 'News article not found' });
+            }
+
+            return res.status(200).json({ message: 'News deleted successfully! 🗑️' });
+        } catch (error) {
+            console.log(error.message);
+            return res.status(500).json({ message: 'Internal server error' });
+        }
+    }
+    
     get_images = async (req, res) => {
         const { id } = req.userInfo
 
@@ -234,7 +301,8 @@ class newsController {
                                 image: '$image',
                                 description: '$description',
                                 date: '$date',
-                                category: '$category'
+                                category: '$category',
+                                isHot:'$isHot'
                             }
                         }
                     }

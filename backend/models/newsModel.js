@@ -38,6 +38,10 @@ const newsSchema = new Schema({
         type: String,
         default: 'pending'
     },
+    isHot: {
+        type: Boolean,
+        default: false
+    },
     count: {
         type: Number,
         default: 0
