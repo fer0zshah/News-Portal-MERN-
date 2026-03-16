@@ -113,6 +113,11 @@ const CategoryNews = () => {
     );
   }
   const hotNewsArticle = news.find(article => article.isHot === true);
+
+  // Create a list of latest news that EXCLUDES the hot article, and grab the first 4
+  const latestCategoryNews = news
+    .filter(article => article.isHot !== true)
+    .slice(0, 4);
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <Header />
@@ -134,7 +139,10 @@ const CategoryNews = () => {
             blockTitle={`Hot in ${category}`}
             hotNews={hotNewsArticle} // <-- We are passing the real data down!
           />
-          <LatestBlock blockTitle={`Latest in ${category}`} />
+          <LatestBlock
+            blockTitle={`Latest in ${category}`}
+            latestNews={latestCategoryNews}
+          />
         </div>
 
         {/* BOTTOM ROW: REAL NEWS GRID */}

@@ -45,6 +45,15 @@ const Home = () => {
   const opinionNews = getCategoryHot('Opinion');
   // Find one global hot news for the main top block
   const globalHotNews = Object.values(allNews).flat().find(article => article.isHot) || null;
+  const allLatestNews = Object.values(allNews)
+    .flat() // Flatten the category arrays into one big array
+    .filter(article => article.isHot !== true) // Optional: Exclude the hot news if you don't want it repeated
+    .sort((a, b) => {
+      // Sort by newest first. Assuming you have a createdAt or date field.
+      // If you strictly use strings like "March 11, 2026", it's better to use `createdAt` for accurate sorting.
+      return new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date);
+    })
+    .slice(0, 4); // Grab the top 4
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -58,7 +67,7 @@ const Home = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* We pass the global hot news to the top block just like we did in CategoryNews */}
           <HotBlock hotNews={globalHotNews} />
-          <LatestBlock />
+         <LatestBlock latestNews={allLatestNews} blockTitle="Latest News" />
         </div>
 
         {/* MIDDLE ROW 2: EDUCATION, TECHNOLOGY & SPORTS */}
